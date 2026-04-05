@@ -12,8 +12,8 @@ if __name__ == "__main__":
     print("1- Chargement des images")
     
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    train_folder = os.path.join(project_root, 'dataset_resized', 'train_dataset')
-    test_folder = os.path.join(project_root, 'dataset_resized', 'test_dataset')
+    train_folder = os.path.join(project_root, 'dataset', 'train_dataset')
+    test_folder = os.path.join(project_root, 'dataset', 'test_dataset')
     
     X_train, Y_train = load_dataset(train_folder)
     X_test, Y_test = load_dataset(test_folder)
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     INPUT_SIZE = 128 * 128 * 3  # 49152 (RGB)
     OUTPUT_SIZE = 3
     EPOCHS = 1000
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.0001
     
     print("2- Instanciation dynamique du modele en C")
     model_ptr = lib.create_linear_model(INPUT_SIZE, OUTPUT_SIZE)
