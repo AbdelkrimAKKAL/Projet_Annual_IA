@@ -50,7 +50,7 @@ def load_dataset(base_folder, target_size=(128, 128)):
                     with Image.open(filepath) as img:
                         img = img.convert('RGB')
                         if img.size != target_size:
-                            continue
+                            img = img.resize(target_size)
                             
                         # Aplatissement 
                         pixels = list(img.getdata())
