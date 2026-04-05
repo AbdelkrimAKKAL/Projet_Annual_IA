@@ -1,0 +1,12 @@
+.vscode
+.env
+
+
+*.dll
+*.exe
+*.o
+*.so
+
+
+__pycache__/
+*.pyc
