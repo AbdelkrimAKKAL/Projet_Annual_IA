@@ -68,6 +68,9 @@ EXPORT void train_one_linear(LinearModel* m, double* features, int label, double
     for (int i = 0; i < m->output_size; i++) {
         double target = (i == label) ? 1.0 : 0.0;
         double error = target - scores[i];
+
+        // Si l'erreur est positive on augmente les poids => Score Eleve
+        // Si l'erreur est negative on diminue les poids => Score Bas
         
         m->biases[i] += learning_rate * error;
         for (int j = 0; j < m->input_size; j++) {
