@@ -83,7 +83,7 @@ Y = [[0],   [1],   [1],   [0]]    # les sorties attendues
 init(2, 4, 1)
 
 # On entraine le reseau sur 3000 epochs avec un taux d'apprentissage de 0.1
-pertes = entrainer(X, Y, epochs=3000, alpha=0.1)
+pertes = entrainer(X, Y, epochs=10000, alpha=0.1)
 
 # On affiche les predictions apres entrainement
 print("Resultats XOR :")
