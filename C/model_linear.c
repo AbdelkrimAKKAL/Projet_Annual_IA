@@ -27,8 +27,8 @@ EXPORT LinearModel* create_linear_model(int input_size, int output_size) {
     model->biases = (double*)malloc(output_size * sizeof(double));
     model->weights = (double**)malloc(output_size * sizeof(double*));
     
-    // Initialisation aléatoire 
-    srand((unsigned int)time(NULL));
+    // Initialisation aléatoire (seed fixe pour pouvoir comparer les runs)
+    srand(42);
     for (int i = 0; i < output_size; i++) {
         model->biases[i] = 0.0;
         model->weights[i] = (double*)malloc(input_size * sizeof(double));
@@ -81,7 +81,7 @@ EXPORT void train_one_linear(LinearModel* m, double* features, int label, double
     free(scores);
 }
 
-// 4- Prediction 
+// 4- Prediction
 EXPORT int predict_linear(LinearModel* m, double* features) {
     int top_index = 0;
     double max_score = -999999999.0;

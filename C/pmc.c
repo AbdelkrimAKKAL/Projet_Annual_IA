@@ -11,8 +11,8 @@
 
 // On fixe le nombre de couches a 3 : entree + 1 couche cachee + sortie
 #define NB_COUCHES   3
-// Taille maximale d'une couche ( 1024 neurones max par couche)
-#define MAX_NEURONES 1024
+// Taille maximale d'une couche (3072 = entree RGB 32x32x3)
+#define MAX_NEURONES 3072
 
 int taille[NB_COUCHES];
 double poids[NB_COUCHES][MAX_NEURONES][MAX_NEURONES];
@@ -20,9 +20,6 @@ double biais[NB_COUCHES][MAX_NEURONES];
 double sortie[NB_COUCHES][MAX_NEURONES];
 double delta[NB_COUCHES][MAX_NEURONES];
 
-double sigmoid(double x) {
-    return 1.0 / (1.0 + exp(-x));
-}
 
 EXPORT void py_init(int nb_entrees, int nb_cachees, int nb_sorties) {
     srand(time(NULL));
@@ -45,7 +42,7 @@ void forward(double *entrees) {
             double s = biais[i][j];
             for (int k = 0; k < taille[i-1]; k++)
                 s += poids[i][j][k] * sortie[i-1][k];
-            sortie[i][j] = sigmoid(s);
+            sortie[i][j] = tanh(s);
         }
 }
 
@@ -53,7 +50,7 @@ void backprop(double *cibles, double alpha) {
     int last = NB_COUCHES - 1;
     for (int j = 0; j < taille[last]; j++) {
         double s = sortie[last][j];
-        delta[last][j] = (cibles[j] - s) * s * (1 - s);
+        delta[last][j] = (cibles[j] - s) * (1 - s * s);  // derivee de tanh : 1 - s^2
     }
     for (int i = last - 1; i >= 1; i--)
         for (int j = 0; j < taille[i]; j++) {
@@ -61,7 +58,7 @@ void backprop(double *cibles, double alpha) {
             for (int k = 0; k < taille[i+1]; k++)
                 e += poids[i+1][k][j] * delta[i+1][k];
             double s = sortie[i][j];
-            delta[i][j] = e * s * (1 - s);
+            delta[i][j] = e * (1 - s * s);  // derivee de tanh : 1 - s^2
         }
     for (int i = 1; i < NB_COUCHES; i++)
         for (int j = 0; j < taille[i]; j++) {
@@ -93,24 +90,3 @@ EXPORT void py_predict(double *entrees, double *out, int nb_out) {
         out[j] = sortie[NB_COUCHES-1][j];
 }
 
-EXPORT void py_sauvegarder(const char *f) {
-    FILE *fp = fopen(f, "w");
-    for (int i = 1; i < NB_COUCHES; i++)
-        for (int j = 0; j < taille[i]; j++) {
-            fprintf(fp, "%f\n", biais[i][j]);
-            for (int k = 0; k < taille[i-1]; k++)
-                fprintf(fp, "%f\n", poids[i][j][k]);
-        }
-    fclose(fp);
-}
-
-EXPORT void py_charger(const char *f) {
-    FILE *fp = fopen(f, "r");
-    for (int i = 1; i < NB_COUCHES; i++)
-        for (int j = 0; j < taille[i]; j++) {
-            fscanf(fp, "%lf", &biais[i][j]);
-            for (int k = 0; k < taille[i-1]; k++)
-                fscanf(fp, "%lf", &poids[i][j][k]);
-        }
-    fclose(fp);
-}
