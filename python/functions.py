@@ -1,12 +1,13 @@
 import os
 import ctypes
-from ctypes import c_double, c_int, c_void_p, POINTER
+from ctypes import c_double, c_int, c_void_p, c_char_p, POINTER
 from PIL import Image
 
-def get_c_library():
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dll_path = os.path.join(script_dir, '..', 'C', 'model_linear.dll')
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+def get_linear_lib():
+
+    dll_path = os.path.join(SCRIPT_DIR, '..', 'C', 'model_linear.dll')
     
     if not os.path.exists(dll_path):
         raise FileNotFoundError(f"La librairie C introuvable : {dll_path}")
@@ -26,7 +27,51 @@ def get_c_library():
     lib.predict_linear.argtypes = [c_void_p, POINTER(c_double)]
     lib.predict_linear.restype = c_int
 
+    lib.save_linear_model.argtypes = [c_void_p, c_char_p]
+    lib.save_linear_model.restype = None
+
+    lib.load_linear_model.argtypes = [c_char_p]
+    lib.load_linear_model.restype = c_void_p
+
     return lib
+
+
+def save_model(lib, model, path):
+    lib.save_linear_model(model, path.encode())
+
+
+def load_model(lib, path):
+    return lib.load_linear_model(path.encode())
+
+
+def get_rbf_lib():
+
+    
+    dll_path = os.path.join(SCRIPT_DIR, "..", "C", "rbf.dll")
+    if not os.path.exists(dll_path):
+        raise FileNotFoundError(f"DLL introuvable : {dll_path}")
+ 
+    lib = ctypes.CDLL(dll_path)
+ 
+    # create_rbf_model(input_size, n_centers, output_size, gamma) -> RBFModel*
+    lib.create_rbf_model.argtypes = [c_int, c_int, c_int, c_double]
+    lib.create_rbf_model.restype = c_void_p
+ 
+    # destroy_rbf_model(model)
+    lib.destroy_rbf_model.argtypes = [c_void_p]
+    lib.destroy_rbf_model.restype = None
+ 
+    # fit_rbf(model, X, labels, nb_ex, kmeans_iter)
+    lib.fit_rbf.argtypes = [c_void_p, POINTER(c_double), POINTER(c_int), c_int, c_int]
+    lib.fit_rbf.restype = None
+ 
+    # predict_rbf(model, features) -> int (classe predite)
+    lib.predict_rbf.argtypes = [c_void_p, POINTER(c_double)]
+    lib.predict_rbf.restype = c_int
+ 
+    return lib
+
+
 
 def load_dataset(base_folder, target_size=(128, 128), color=False, one_hot=False):
 
