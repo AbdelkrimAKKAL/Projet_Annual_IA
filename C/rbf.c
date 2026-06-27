@@ -250,3 +250,54 @@ EXPORT int predict_rbf(RBFModel* m, double* features) {
     free(bosse);
     return top_index;
 }
+
+// 7- Sauvegarde du modele dans un fichier texte
+EXPORT void save_rbf_model(RBFModel* m, const char* path) {
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+
+    fprintf(f, "%d %d %d %.17g\n", m->input_size, m->n_centers, m->output_size, m->gamma);
+
+    for (int j = 0; j < m->n_centers; j++) {
+        for (int k = 0; k < m->input_size; k++) {
+            fprintf(f, "%.17g ", m->centers[j][k]);
+        }
+        fprintf(f, "\n");
+    }
+
+    for (int i = 0; i < m->output_size; i++) {
+        for (int j = 0; j < m->n_centers; j++) {
+            fprintf(f, "%.17g ", m->weights[i][j]);
+        }
+        fprintf(f, "\n");
+    }
+
+    fclose(f);
+}
+
+// 8- Chargement du modele depuis un fichier texte
+EXPORT RBFModel* load_rbf_model(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (!f) return NULL;
+
+    int input_size, n_centers, output_size;
+    double gamma;
+    fscanf(f, "%d %d %d %lf", &input_size, &n_centers, &output_size, &gamma);
+
+    RBFModel* m = create_rbf_model(input_size, n_centers, output_size, gamma);
+
+    for (int j = 0; j < n_centers; j++) {
+        for (int k = 0; k < input_size; k++) {
+            fscanf(f, "%lf", &m->centers[j][k]);
+        }
+    }
+
+    for (int i = 0; i < output_size; i++) {
+        for (int j = 0; j < n_centers; j++) {
+            fscanf(f, "%lf", &m->weights[i][j]);
+        }
+    }
+
+    fclose(f);
+    return m;
+}

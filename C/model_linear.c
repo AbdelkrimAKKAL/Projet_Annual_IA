@@ -101,35 +101,45 @@ EXPORT int predict_linear(LinearModel* m, double* features) {
     return top_index;
 }
 
-// 5- Sauvegarde du modele dans un fichier binaire
+// 5- Sauvegarde du modele dans un fichier texte
 EXPORT void save_linear_model(LinearModel* m, const char* path) {
-    FILE* f = fopen(path, "wb");
+    FILE* f = fopen(path, "w");
     if (!f) return;
 
-    fwrite(&m->input_size, sizeof(int), 1, f);
-    fwrite(&m->output_size, sizeof(int), 1, f);
-    fwrite(m->biases, sizeof(double), m->output_size, f);
+    fprintf(f, "%d %d\n", m->input_size, m->output_size);
+
     for (int i = 0; i < m->output_size; i++) {
-        fwrite(m->weights[i], sizeof(double), m->input_size, f);
+        fprintf(f, "%.17g\n", m->biases[i]);
+    }
+
+    for (int i = 0; i < m->output_size; i++) {
+        for (int j = 0; j < m->input_size; j++) {
+            fprintf(f, "%.17g ", m->weights[i][j]);
+        }
+        fprintf(f, "\n");
     }
 
     fclose(f);
 }
 
-// 6- Chargement du modele depuis un fichier binaire
+// 6- Chargement du modele depuis un fichier texte
 EXPORT LinearModel* load_linear_model(const char* path) {
-    FILE* f = fopen(path, "rb");
+    FILE* f = fopen(path, "r");
     if (!f) return NULL;
 
     int input_size, output_size;
-    fread(&input_size, sizeof(int), 1, f);
-    fread(&output_size, sizeof(int), 1, f);
+    fscanf(f, "%d %d", &input_size, &output_size);
 
     LinearModel* m = create_linear_model(input_size, output_size);
 
-    fread(m->biases, sizeof(double), output_size, f);
     for (int i = 0; i < output_size; i++) {
-        fread(m->weights[i], sizeof(double), input_size, f);
+        fscanf(f, "%lf", &m->biases[i]);
+    }
+
+    for (int i = 0; i < output_size; i++) {
+        for (int j = 0; j < input_size; j++) {
+            fscanf(f, "%lf", &m->weights[i][j]);
+        }
     }
 
     fclose(f);
