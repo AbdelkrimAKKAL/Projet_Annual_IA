@@ -1,14 +1,16 @@
 import ctypes
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
 
-import os
+from functions import load_dataset
+
 # =============================================================
 # CHARGEMENT DE LA LIB C
 # =============================================================
-lib = ctypes.CDLL("../C/pmc.dll")
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+lib = ctypes.CDLL(os.path.join(SCRIPT_DIR, "..", "C", "pmc.dll"))
 
 
 lib.py_init.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
@@ -61,105 +63,70 @@ def entrainer(X, Y, epochs=2000, alpha=0.1):
     )
     return list(pertes)
 
-def predire(x):
-    # Fait une prediction pour un exemple x
+def predire(x, nb_sorties=1):
+    # Fait une prediction pour un exemple x ; renvoie la liste des sorties
     x_np = np.array(x, dtype=np.float64)
-    out  = (ctypes.c_double * 1)()  
+    out  = (ctypes.c_double * nb_sorties)()
     lib.py_predict(
         x_np.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        out, 1
+        out, nb_sorties
     )
-    return out[0]
-
-
-# =============================================================
-# CAS DE TEST : XOR
-# =============================================================
-
-X = [[0,0], [0,1], [1,0], [1,1]]  # les entrees
-Y = [[0],   [1],   [1],   [0]]    # les sorties attendues
-
-# On cree un reseau : 2 entrees, 4 neurones caches, 1 sortie
-init(2, 4, 1)
-
-# On entraine le reseau sur 3000 epochs avec un taux d'apprentissage de 0.1
-pertes = entrainer(X, Y, epochs=3000, alpha=0.1)
-
-# On affiche les predictions apres entrainement
-print("Resultats XOR :")
-for x, y in zip(X, Y):
-    print(f"  {x} => predit : {predire(x):.3f}  attendu : {y[0]}")
-
-# On trace la courbe d'apprentissage
-# Si la courbe descend bien vers 0, le reseau a bien appris
-plt.plot(pertes)
-plt.title("Courbe d'apprentissage - XOR")
-plt.xlabel("Epoch")       # axe horizontal : le numero de l'epoch
-plt.ylabel("Erreur")      # axe vertical   : l'erreur moyenne
-plt.grid(True)
-plt.savefig("../results/courbe_xor.png")
-plt.show()
+    return list(out)
 
 
 # ============================================================
 # CHIENS / CHATS / AUTRES
 # 0 = chat, 1 = chien, 2 = autre
 # ============================================================
- 
-TAILLE = 32
- 
-def charger_images(dossier, label):
-    X, Y = [], []
-    for fichier in os.listdir(dossier):
-        if fichier.endswith(".jpg") or fichier.endswith(".png"):
-            img = Image.open(os.path.join(dossier, fichier)).convert("L").resize((TAILLE, TAILLE))
-            X.append(np.array(img, dtype=np.float64).flatten() / 255.0)
-            Y.append([label])
-    return X, Y
- 
-# Chargement des images d'entrainement
-X_chats,  Y_chats  = charger_images("../dataset/train_dataset/chats",  0)
-X_chiens, Y_chiens = charger_images("../dataset/train_dataset/chiens", 1)
-X_autres, Y_autres = charger_images("../dataset/train_dataset/autres", 2)
- 
-X_train = X_chats  + X_chiens  + X_autres
-Y_train = Y_chats  + Y_chiens  + Y_autres
- 
-print(f"\nDataset : {len(X_train)} images ({len(X_chats)} chats, {len(X_chiens)} chiens, {len(X_autres)} autres)")
- 
-# Entrainement : 1024 entrees, 16 neurones caches, 1 sortie
-init(TAILLE * TAILLE, 16, 1)
-pertes = entrainer(X_train, Y_train, epochs=2000, alpha=0.01)
- 
-plt.figure()
-plt.plot(pertes)
-plt.title("Courbe d'apprentissage - Chiens/Chats/Autres")
-plt.xlabel("Epoch")
-plt.ylabel("Erreur")
-plt.grid(True)
-plt.savefig("../results/courbe_chiens_chats.png")
-plt.show()
- 
-# Test sur les images que le réseau n'a jamais vues
-X_chats_test,  Y_chats_test  = charger_images("../dataset/test_dataset/chats",  0)
-X_chiens_test, Y_chiens_test = charger_images("../dataset/test_dataset/chiens", 1)
-X_autres_test, Y_autres_test = charger_images("../dataset/test_dataset/autres", 2)
- 
-X_test = X_chats_test  + X_chiens_test  + X_autres_test
-Y_test = Y_chats_test  + Y_chiens_test  + Y_autres_test
- 
-# Correspondance entre la valeur et le nom de la classe
-noms = ["chat", "chien", "autre"]
- 
-print("\nResultats sur les images de test :")
-nb_correct = 0
-for x, y in zip(X_test, Y_test):
-    pred     = predire(x)
-    predit   = noms[min(round(pred), 2)]  # on arrondit et on limite entre 0 et 2
-    attendu  = noms[int(y[0])]
-    resultat = "OK" if predit == attendu else "ERREUR"
-    print(f"  attendu : {attendu} => predit : {predit}  {resultat}")
-    if predit == attendu:
-        nb_correct += 1
- 
-print(f"\nPrecision : {nb_correct}/{len(X_test)} ({100*nb_correct/len(X_test):.1f}%)")
+
+if __name__ == "__main__":
+    TAILLE = 32
+    NB_CLASSES = 3
+
+    # Chargement des images d'entrainement
+    X_train, Y_train = load_dataset(os.path.join(SCRIPT_DIR, "..", "dataset", "train_dataset"), target_size=(TAILLE, TAILLE), color=True, one_hot=True)
+
+    perm = np.random.permutation(len(X_train))
+    X_train = [X_train[i] for i in perm]
+    Y_train = [Y_train[i] for i in perm]
+
+    print(f"\nDataset : {len(X_train)} images")
+
+    # Entrainement : RGB 32x32x3 = 3072 entrees, 16 neurones caches, 3 sorties
+    init(TAILLE * TAILLE * 3, 16, NB_CLASSES)
+    pertes = entrainer(X_train, Y_train, epochs=800, alpha=0.01)
+
+    plt.figure()
+    plt.plot(pertes)
+    plt.title("Courbe d'apprentissage - Chiens/Chats/Autres")
+    plt.xlabel("Epoch")
+    plt.ylabel("Erreur")
+    plt.grid(True)
+    plt.savefig(os.path.join(SCRIPT_DIR, "..", "results", "courbe_chiens_chats.png"))
+    plt.show()
+
+    # Precision sur l'ENTRAINEMENT
+    nb_correct_train = 0
+    for x, y in zip(X_train, Y_train):
+        sorties = predire(x, NB_CLASSES)
+        if int(np.argmax(sorties)) == int(np.argmax(y)):
+            nb_correct_train += 1
+    print(f"\nPrecision entrainement : {nb_correct_train}/{len(X_train)} ({100*nb_correct_train/len(X_train):.1f}%)")
+
+    # Test
+    X_test, Y_test = load_dataset(os.path.join(SCRIPT_DIR, "..", "dataset", "test_dataset"), target_size=(TAILLE, TAILLE), color=True, one_hot=True)
+
+    noms = ["chat", "chien", "autre"]
+
+    print("\nResultats sur les images de test :")
+    nb_correct = 0
+    for x, y in zip(X_test, Y_test):
+        sorties  = predire(x, NB_CLASSES)        # 3 sorties
+        predit   = noms[int(np.argmax(sorties))]  # classe = sortie la plus forte
+        attendu  = noms[int(np.argmax(y))]        # classe attendue (one-hot)
+        resultat = "OK" if predit == attendu else "ERREUR"
+        print(f"  attendu : {attendu} => predit : {predit}  {resultat}")
+        if predit == attendu:
+            nb_correct += 1
+
+    print(f"\nPrecision : {nb_correct}/{len(X_test)} ({100*nb_correct/len(X_test):.1f}%)")

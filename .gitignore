@@ -1,0 +1,15 @@
+.vscode
+.env
+
+
+*.dll
+*.exe
+*.o
+*.so
+
+docs
+venv
+
+__pycache__/
+*.pyc
+
