@@ -1,79 +1,28 @@
 import os
 import ctypes
-from ctypes import c_double, c_int, c_void_p, c_char_p, POINTER
+from ctypes import c_double
+import numpy as np
 from PIL import Image
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-def get_linear_lib():
-
-    dll_path = os.path.join(SCRIPT_DIR, '..', 'C', 'model_linear.dll')
-    
-    if not os.path.exists(dll_path):
-        raise FileNotFoundError(f"La librairie C introuvable : {dll_path}")
-        
-    lib = ctypes.CDLL(dll_path)
-    
-    # Configuration stricte de l'interface C/Python
-    lib.create_linear_model.argtypes = [c_int, c_int]
-    lib.create_linear_model.restype = c_void_p
-
-    lib.destroy_linear_model.argtypes = [c_void_p]
-    lib.destroy_linear_model.restype = None
-
-    lib.train_one_linear.argtypes = [c_void_p, POINTER(c_double), c_int, c_double]
-    lib.train_one_linear.restype = None
-
-    lib.predict_linear.argtypes = [c_void_p, POINTER(c_double)]
-    lib.predict_linear.restype = c_int
-
-    lib.save_linear_model.argtypes = [c_void_p, c_char_p]
-    lib.save_linear_model.restype = None
-
-    lib.load_linear_model.argtypes = [c_char_p]
-    lib.load_linear_model.restype = c_void_p
-
-    return lib
 
 
-def save_model(lib, model, path):
-    lib.save_linear_model(model, path.encode())
+def convertir_tab_c(point):
+    """Convertit une liste Python en tableau ctypes (laisse passer un tableau deja convertit)."""
+    if isinstance(point, ctypes.Array):
+        return point
+    return (c_double * len(point))(*point)
 
 
-def load_model(lib, path):
-    return lib.load_linear_model(path.encode())
+def melanger(X, Y, seed=42):
+    """Melange X et Y de la meme maniere (permutation aleatoire)."""
+    rng = np.random.RandomState(seed)
+    perm = rng.permutation(len(X))
+    return [X[i] for i in perm], [Y[i] for i in perm]
 
 
-def get_rbf_lib():
-
-    
-    dll_path = os.path.join(SCRIPT_DIR, "..", "C", "rbf.dll")
-    if not os.path.exists(dll_path):
-        raise FileNotFoundError(f"DLL introuvable : {dll_path}")
- 
-    lib = ctypes.CDLL(dll_path)
- 
-    # create_rbf_model(input_size, n_centers, output_size, gamma) -> RBFModel*
-    lib.create_rbf_model.argtypes = [c_int, c_int, c_int, c_double]
-    lib.create_rbf_model.restype = c_void_p
- 
-    # destroy_rbf_model(model)
-    lib.destroy_rbf_model.argtypes = [c_void_p]
-    lib.destroy_rbf_model.restype = None
- 
-    # fit_rbf(model, X, labels, nb_ex, kmeans_iter)
-    lib.fit_rbf.argtypes = [c_void_p, POINTER(c_double), POINTER(c_int), c_int, c_int]
-    lib.fit_rbf.restype = None
- 
-    # predict_rbf(model, features) -> int (classe predite)
-    lib.predict_rbf.argtypes = [c_void_p, POINTER(c_double)]
-    lib.predict_rbf.restype = c_int
- 
-    return lib
-
-
-
-def load_dataset(base_folder, target_size=(128, 128), color=False, one_hot=False):
+def load_dataset(base_folder, target_size=(32, 32), color=False, one_hot=False):
 
     X = []
     Y = []
