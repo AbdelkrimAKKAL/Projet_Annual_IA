@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classificateur d'images</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Classificateur Chat / Chien / Autre</h1>
+
+        <div class="form-group">
+            <label for="modele">Modèle :</label>
+            <select id="modele">
+                <option value="linear">Modèle Linéaire</option>
+                <option value="rbf">RBF</option>
+                <option value="svm">SVM</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="image">Image :</label>
+            <input type="file" id="image" accept="image/*">
+        </div>
+
+        <button id="btn">Prédire</button>
+
+        <div id="resultat" class="hidden">
+            <img id="apercu" src="" alt="Image uploadée">
+            <p id="prediction"></p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
