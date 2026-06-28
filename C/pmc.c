@@ -50,7 +50,7 @@ void backprop(double *cibles, double alpha) {
     int last = NB_COUCHES - 1;
     for (int j = 0; j < taille[last]; j++) {
         double s = sortie[last][j];
-        delta[last][j] = (cibles[j] - s) * (1 - s * s);  // derivee de tanh : 1 - s^2
+        delta[last][j] = (cibles[j] - s) * (1 - s * s);
     }
     for (int i = last - 1; i >= 1; i--)
         for (int j = 0; j < taille[i]; j++) {
@@ -58,7 +58,7 @@ void backprop(double *cibles, double alpha) {
             for (int k = 0; k < taille[i+1]; k++)
                 e += poids[i+1][k][j] * delta[i+1][k];
             double s = sortie[i][j];
-            delta[i][j] = e * (1 - s * s);  // derivee de tanh : 1 - s^2
+            delta[i][j] = e * (1 - s * s);
         }
     for (int i = 1; i < NB_COUCHES; i++)
         for (int j = 0; j < taille[i]; j++) {
@@ -90,3 +90,40 @@ EXPORT void py_predict(double *entrees, double *out, int nb_out) {
         out[j] = sortie[NB_COUCHES-1][j];
 }
 
+// 5- Sauvegarde du modele dans un fichier texte
+EXPORT void py_sauvegarder(const char* path) {
+    FILE* f = fopen(path, "w");
+    if (!f) return;
+
+    fprintf(f, "%d %d %d\n", taille[0], taille[1], taille[2]);
+
+    for (int i = 1; i < NB_COUCHES; i++)
+        for (int j = 0; j < taille[i]; j++)
+            fprintf(f, "%.17g\n", biais[i][j]);
+
+    for (int i = 1; i < NB_COUCHES; i++)
+        for (int j = 0; j < taille[i]; j++)
+            for (int k = 0; k < taille[i-1]; k++)
+                fprintf(f, "%.17g ", poids[i][j][k]);
+
+    fclose(f);
+}
+
+// 6- Chargement du modele depuis un fichier texte
+EXPORT void py_charger(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (!f) return;
+
+    fscanf(f, "%d %d %d", &taille[0], &taille[1], &taille[2]);
+
+    for (int i = 1; i < NB_COUCHES; i++)
+        for (int j = 0; j < taille[i]; j++)
+            fscanf(f, "%lf", &biais[i][j]);
+
+    for (int i = 1; i < NB_COUCHES; i++)
+        for (int j = 0; j < taille[i]; j++)
+            for (int k = 0; k < taille[i-1]; k++)
+                fscanf(f, "%lf", &poids[i][j][k]);
+
+    fclose(f);
+}
