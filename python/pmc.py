@@ -14,6 +14,7 @@ lib = ctypes.CDLL(os.path.join(SCRIPT_DIR, "..", "C", "pmc.dll"))
 
 
 lib.py_init.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.py_init_regression.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
 
 lib.py_train.argtypes = [
     ctypes.POINTER(ctypes.c_double),  # X : les entrees
@@ -41,8 +42,12 @@ lib.py_charger.argtypes     = [ctypes.c_char_p]
 # =============================================================
 
 def init(nb_entrees, nb_cachees, nb_sorties):
-    # Cree le reseau avec les tailles de couches donnees
+    # Cree le reseau avec les tailles de couches donnees (sortie tanh, classification)
     lib.py_init(nb_entrees, nb_cachees, nb_sorties)
+
+def init_regression(nb_entrees, nb_cachees, nb_sorties):
+    # Meme reseau, mais sortie lineaire (pas de tanh) pour predire des valeurs reelles
+    lib.py_init_regression(nb_entrees, nb_cachees, nb_sorties)
 
 def entrainer(X, Y, epochs=2000, alpha=0.1):
     # Convertit les listes Python en tableaux numpy de float64
