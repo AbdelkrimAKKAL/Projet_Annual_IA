@@ -40,6 +40,7 @@ def entrainer_linear(X, Y, output_size, epochs, lr, shuffle=True, seed=42, X_tes
     model = lib.create_linear_model(len(X[0]), output_size)
     suivre_historique = X_test is not None
     hist_train, hist_test = [], []
+    err_train, err_test = [] , []
 
     for _ in range(epochs):
         for x, y in zip(X, Y):
@@ -47,8 +48,10 @@ def entrainer_linear(X, Y, output_size, epochs, lr, shuffle=True, seed=42, X_tes
         if suivre_historique:
             hist_train.append(precision_linear(model, X, Y))
             hist_test.append(precision_linear(model, X_test, Y_test))
+            err_train.append(100 - hist_train[-1])
+            err_test.append(100 - hist_test[-1])
 
-    return (model, hist_train, hist_test) if suivre_historique else model
+    return (model, hist_train, hist_test, err_train, err_test) if suivre_historique else model
 
 
 def predire_linear(model, point):
