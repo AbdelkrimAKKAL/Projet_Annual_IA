@@ -3,8 +3,6 @@ from ctypes import c_double, c_int, c_void_p, c_char_p, POINTER
 import os
 import numpy as np
 
-from functions import convertir_tab_c
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 lib = ctypes.CDLL(os.path.join(SCRIPT_DIR, "..", "C", "rbf.dll"))
 
@@ -29,21 +27,22 @@ lib.load_rbf_model.restype = c_void_p
 
 def entrainer_rbf(X, y, n_centres, gamma, kmeans_iter=20):
     """Cree et entraine un modele RBF sur (X, y)"""
-    X_np = np.ascontiguousarray(X, dtype=np.float64)
-    y_np = np.ascontiguousarray(y, dtype=np.int32)
+    X_np = np.array(X, dtype=np.float64)
+    y_np = np.array(y, dtype=np.int32)
     nb_classes = len(set(y))
 
+    X_c = np.ctypeslib.as_ctypes(X_np.ravel())
+    y_c = np.ctypeslib.as_ctypes(y_np)
+
     model = lib.create_rbf_model(X_np.shape[1], n_centres, nb_classes, gamma)
-    lib.fit_rbf(model,
-                X_np.ctypes.data_as(POINTER(c_double)),
-                y_np.ctypes.data_as(POINTER(c_int)),
-                len(X_np), kmeans_iter)
+    lib.fit_rbf(model, X_c, y_c, len(X_np), kmeans_iter)
     return model
 
 
 def predire_rbf(model, point):
     """Classe predite par le modele pour un point"""
-    return lib.predict_rbf(model, convertir_tab_c(point))
+    point_np = np.array(point, dtype=np.float64)
+    return lib.predict_rbf(model, np.ctypeslib.as_ctypes(point_np))
 
 
 def precision_rbf(model, X, y):
