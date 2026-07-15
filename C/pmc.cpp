@@ -26,7 +26,8 @@ double delta[NB_COUCHES][MAX_NEURONES];
 int sortie_lineaire = 0;
 
 void py_init_commun(int nb_entrees, int nb_cachees, int nb_sorties) {
-    srand(time(NULL));
+    //srand(time(NULL));
+    srand(42);
     taille[0] = nb_entrees;
     taille[1] = nb_cachees;
     taille[2] = nb_sorties;
@@ -43,7 +44,6 @@ EXPORT void py_init(int nb_entrees, int nb_cachees, int nb_sorties) {
     py_init_commun(nb_entrees, nb_cachees, nb_sorties);
 }
 
-// Meme reseau, mais sortie lineaire (pas de tanh sur la derniere couche) pour la regression
 EXPORT void py_init_regression(int nb_entrees, int nb_cachees, int nb_sorties) {
     sortie_lineaire = 1;
     py_init_commun(nb_entrees, nb_cachees, nb_sorties);
@@ -85,6 +85,7 @@ void backprop(double *cibles, double alpha) {
         }
 }
 
+// Entrainement sur toutes les epochs d'un coup (retourne les pertes)
 EXPORT void py_train(double *X, double *Y, int nb_ex, int nb_in, int nb_out,
               int epochs, double alpha, double *pertes) {
     for (int ep = 0; ep < epochs; ep++) {
@@ -99,6 +100,12 @@ EXPORT void py_train(double *X, double *Y, int nb_ex, int nb_in, int nb_out,
         }
         pertes[ep] = perte / nb_ex;
     }
+}
+
+// Entrainement sur une seule image — comme train_one_linear de mon pote
+EXPORT void py_train_one(double *entree, double *cible, double alpha) {
+    forward(entree);
+    backprop(cible, alpha);
 }
 
 EXPORT void py_predict(double *entrees, double *out, int nb_out) {
