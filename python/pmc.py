@@ -1,9 +1,8 @@
 import ctypes
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
-from functions import load_dataset
+from functions import melanger, convertir_tab_c
 
 # =============================================================
 # CHARGEMENT DE LA LIB C
@@ -12,23 +11,29 @@ from functions import load_dataset
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 lib = ctypes.CDLL(os.path.join(SCRIPT_DIR, "..", "C", "pmc.dll"))
 
-
-lib.py_init.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.py_init.argtypes            = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.py_init_regression.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
 
 lib.py_train.argtypes = [
-    ctypes.POINTER(ctypes.c_double),  # X : les entrees
-    ctypes.POINTER(ctypes.c_double),  # Y : les cibles
+    ctypes.POINTER(ctypes.c_double),  # X
+    ctypes.POINTER(ctypes.c_double),  # Y
     ctypes.c_int,                     # nb_exemples
-    ctypes.c_int,                     # nb_entrees par exemple
-    ctypes.c_int,                     # nb_sorties par exemple
-    ctypes.c_int,                     # nombre d'epochs
-    ctypes.c_double,                  # alpha (taux d'apprentissage)
-    ctypes.POINTER(ctypes.c_double),  # pertes (tableau resultat)
+    ctypes.c_int,                     # nb_entrees
+    ctypes.c_int,                     # nb_sorties
+    ctypes.c_int,                     # epochs
+    ctypes.c_double,                  # alpha
+    ctypes.POINTER(ctypes.c_double),  # pertes
+]
+
+lib.py_train_one.argtypes = [
+    ctypes.POINTER(ctypes.c_double),  # entree
+    ctypes.POINTER(ctypes.c_double),  # cible
+    ctypes.c_double,                  # alpha
 ]
 
 lib.py_predict.argtypes = [
     ctypes.POINTER(ctypes.c_double),  # entrees
-    ctypes.POINTER(ctypes.c_double),  # sorties (resultat)
+    ctypes.POINTER(ctypes.c_double),  # sorties
     ctypes.c_int,                     # nb_sorties
 ]
 
@@ -41,30 +46,60 @@ lib.py_charger.argtypes     = [ctypes.c_char_p]
 # =============================================================
 
 def init(nb_entrees, nb_cachees, nb_sorties):
-    # Cree le reseau avec les tailles de couches donnees
+    """Initialise le reseau (classification, sortie tanh)."""
     lib.py_init(nb_entrees, nb_cachees, nb_sorties)
 
-def entrainer(X, Y, epochs=2000, alpha=0.1):
-    # Convertit les listes Python en tableaux numpy de float64
-    X_np = np.array(X, dtype=np.float64)
-    Y_np = np.array(Y, dtype=np.float64)
+def init_regression(nb_entrees, nb_cachees, nb_sorties):
+    """Initialise le reseau (regression, sortie lineaire)."""
+    lib.py_init_regression(nb_entrees, nb_cachees, nb_sorties)
 
-    nb_exemples = X_np.shape[0]  # nombre de lignes = nombre d'exemples
-    nb_entrees  = X_np.shape[1]  # nombre de colonnes = nombre d'entrees
-    nb_sorties  = Y_np.shape[1]  # nombre de colonnes = nombre de sorties
+def entrainer(X, Y, epochs=2000, alpha=0.1, shuffle=True, seed=42, X_test=None, Y_test=None):
+    """
+    Entraine le reseau.
+    - Si X_test est fourni : entraine epoch par epoch via py_train_one et retourne
+      (hist_train, hist_test, err_train, err_test) comme model_linear.py
+    - Sinon : entraine tout d'un coup via py_train et retourne les pertes
+    """
+    if X_test is not None:
+        # Entrainement epoch par epoch avec suivi historique
+        if shuffle:
+            X, Y = melanger(X, Y, seed)
 
-    # Tableau qui recevra l'erreur moyenne a chaque epoch
-    pertes = (ctypes.c_double * epochs)()
+        nb_sorties = len(Y[0])
+        hist_train, hist_test = [], []
+        err_train,  err_test  = [], []
 
-    lib.py_train(
-        X_np.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        Y_np.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        nb_exemples, nb_entrees, nb_sorties, epochs, alpha, pertes
-    )
-    return list(pertes)
+        for _ in range(epochs):
+            for x, y in zip(X, Y):
+                c_x = convertir_tab_c(x)
+                c_y = (ctypes.c_double * nb_sorties)(*y)
+                lib.py_train_one(c_x, c_y, alpha)
+
+            hist_train.append(precision_pmc(X, Y, nb_sorties))
+            hist_test.append(precision_pmc(X_test, Y_test, nb_sorties))
+            err_train.append(100 - hist_train[-1])
+            err_test.append(100 - hist_test[-1])
+
+        return hist_train, hist_test, err_train, err_test
+
+    else:
+        # Entrainement tout d'un coup (rapide, pour les runs sans historique)
+        X_np = np.array(X, dtype=np.float64)
+        Y_np = np.array(Y, dtype=np.float64)
+        nb_ex  = X_np.shape[0]
+        nb_in  = X_np.shape[1]
+        nb_out = Y_np.shape[1]
+        pertes = (ctypes.c_double * epochs)()
+        lib.py_train(
+            X_np.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            Y_np.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            nb_ex, nb_in, nb_out, epochs, alpha, pertes
+        )
+        return list(pertes)
+
 
 def predire(x, nb_sorties=1):
-    # Fait une prediction pour un exemple x ; renvoie la liste des sorties
+    """Retourne le vecteur de sortie du reseau pour un exemple x."""
     x_np = np.array(x, dtype=np.float64)
     out  = (ctypes.c_double * nb_sorties)()
     lib.py_predict(
@@ -74,59 +109,10 @@ def predire(x, nb_sorties=1):
     return list(out)
 
 
-# ============================================================
-# CHIENS / CHATS / AUTRES
-# 0 = chat, 1 = chien, 2 = autre
-# ============================================================
-
-if __name__ == "__main__":
-    TAILLE = 32
-    NB_CLASSES = 3
-
-    # Chargement des images d'entrainement
-    X_train, Y_train = load_dataset(os.path.join(SCRIPT_DIR, "..", "dataset", "train_dataset"), target_size=(TAILLE, TAILLE), color=True, one_hot=True)
-
-    perm = np.random.permutation(len(X_train))
-    X_train = [X_train[i] for i in perm]
-    Y_train = [Y_train[i] for i in perm]
-
-    print(f"\nDataset : {len(X_train)} images")
-
-    # Entrainement : RGB 32x32x3 = 3072 entrees, 16 neurones caches, 3 sorties
-    init(TAILLE * TAILLE * 3, 16, NB_CLASSES)
-    pertes = entrainer(X_train, Y_train, epochs=800, alpha=0.01)
-
-    plt.figure()
-    plt.plot(pertes)
-    plt.title("Courbe d'apprentissage - Chiens/Chats/Autres")
-    plt.xlabel("Epoch")
-    plt.ylabel("Erreur")
-    plt.grid(True)
-    plt.savefig(os.path.join(SCRIPT_DIR, "..", "results", "courbe_chiens_chats.png"))
-    plt.show()
-
-    # Precision sur l'ENTRAINEMENT
-    nb_correct_train = 0
-    for x, y in zip(X_train, Y_train):
-        sorties = predire(x, NB_CLASSES)
-        if int(np.argmax(sorties)) == int(np.argmax(y)):
-            nb_correct_train += 1
-    print(f"\nPrecision entrainement : {nb_correct_train}/{len(X_train)} ({100*nb_correct_train/len(X_train):.1f}%)")
-
-    # Test
-    X_test, Y_test = load_dataset(os.path.join(SCRIPT_DIR, "..", "dataset", "test_dataset"), target_size=(TAILLE, TAILLE), color=True, one_hot=True)
-
-    noms = ["chat", "chien", "autre"]
-
-    print("\nResultats sur les images de test :")
-    nb_correct = 0
-    for x, y in zip(X_test, Y_test):
-        sorties  = predire(x, NB_CLASSES)        # 3 sorties
-        predit   = noms[int(np.argmax(sorties))]  # classe = sortie la plus forte
-        attendu  = noms[int(np.argmax(y))]        # classe attendue (one-hot)
-        resultat = "OK" if predit == attendu else "ERREUR"
-        print(f"  attendu : {attendu} => predit : {predit}  {resultat}")
-        if predit == attendu:
-            nb_correct += 1
-
-    print(f"\nPrecision : {nb_correct}/{len(X_test)} ({100*nb_correct/len(X_test):.1f}%)")
+def precision_pmc(X, Y, nb_sorties):
+    """Pourcentage de bonnes predictions (classification, argmax)."""
+    ok = sum(
+        int(np.argmax(predire(x, nb_sorties))) == int(np.argmax(y))
+        for x, y in zip(X, Y)
+    )
+    return ok / len(X) * 100
