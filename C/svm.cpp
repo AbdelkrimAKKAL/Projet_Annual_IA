@@ -110,8 +110,8 @@ EXPORT void train_one_svm(SVM* m, double* features, double* ybin, int nbr_ex, in
 
     //2. trouver les alphas
     double* alpha = (double*)calloc(nbr_ex, sizeof(double));
-    double lr = 0.01;
-    int iteration = 1000;
+    double lr = (m->kernel_type == 1) ? 0.001 : 0.01;
+    int iteration = (m->kernel_type == 1) ? 5000 : 1000;
     // gradient = Q.alpha - 1 => (N*N)x(N*1) = N*1
     double* g = (double*)calloc(nbr_ex,sizeof(double));
 
