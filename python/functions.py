@@ -18,6 +18,7 @@ def convertir_tab_c(point):
 def melanger(X, Y, seed=42):
     """Melange X et Y de la meme maniere (permutation aleatoire)."""
     rng = np.random.RandomState(seed)
+    #perm = [3, 0, 5, 1, 4, 2]
     perm = rng.permutation(len(X))
     return [X[i] for i in perm], [Y[i] for i in perm]
 
@@ -28,8 +29,6 @@ def load_dataset(base_folder, target_size=(32, 32), color=False, one_hot=False):
     Y = []
     labels_map = {"chats": 0, "chiens": 1, "autres": 2}
     nb_classes = len(labels_map)
-    channels = 3 if color else 1
-    total_pixels = target_size[0] * target_size[1] * channels
 
     if not os.path.exists(base_folder):
         return X, Y
@@ -48,18 +47,19 @@ def load_dataset(base_folder, target_size=(32, 32), color=False, one_hot=False):
                         if img.size != target_size:
                             img = img.resize(target_size)
 
-                        # Aplatissement, centre dans [-0.5, 0.5]
+                        # Aplatissement
                         pixels = list(img.getdata())
                         if color:
+                            #[(120, 55, 200), (34, 90, 12), ...]
+                            # => [120, 55, 200, 34, 90, 12, ...]
                             pixels = [v for pixel in pixels for v in pixel]
+                        
+                        #centre dans [-0.5, 0.5]
                         flat_pixels = [val / 255.0 - 0.5 for val in pixels]
 
-                        # Conversion ctypes
-                        DoubleArrayType = c_double * total_pixels
-                        c_array = DoubleArrayType(*flat_pixels)
-
-                        X.append(c_array)
-
+                        X.append(flat_pixels)
+                        
+                        # dans le cas de PMC [-1, 1] tanh
                         if one_hot:
                             # Cible one-hot en -1 / +1 : +1 pour la bonne classe, -1 pour les autres
                             cible = [-1.0] * nb_classes
@@ -70,3 +70,4 @@ def load_dataset(base_folder, target_size=(32, 32), color=False, one_hot=False):
                 except Exception as e:
                     print(f"Erreur de lecture image: {filepath}")
     return X, Y
+

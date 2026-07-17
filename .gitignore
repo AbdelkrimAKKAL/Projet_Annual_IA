@@ -13,3 +13,6 @@ venv
 __pycache__/
 *.pyc
 
+models/svm_dataset.txt
+models/svm_or.txt
+

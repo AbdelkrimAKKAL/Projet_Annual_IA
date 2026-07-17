@@ -152,10 +152,24 @@ EXPORT void train_one_svm(SVM* m, double* features, double* ybin, int nbr_ex, in
     for (int i=0; i<nbr_ex; i++){
         if (alpha[i] > 1e-6) nbr_sv++;
     }
-    if (nbr_sv == 0) nbr_sv = 1; // securite, ne devrait pas arriver
-
     ClassModel* cm = &m->classes[classe];
     cm->nb_sv = nbr_sv;
+
+    // aucun vecteur de support (ex : classe sans exemple positif en one-vs-all) :
+    // pas d'allocation, score constant -1 -> cette classe ne gagne jamais
+    if (nbr_sv == 0){
+        cm->sv_features = NULL;
+        cm->sv_alpha = NULL;
+        cm->sv_y = NULL;
+        cm->w0 = -1.0;
+
+        free(alpha);
+        free(g);
+        for (int i = 0; i < nbr_ex; i++) free(bigM[i]);
+        free(bigM);
+        return;
+    }
+
     cm->sv_features = (double**)malloc(nbr_sv * sizeof(double*));
     cm->sv_alpha = (double*)malloc(nbr_sv * sizeof(double));
     cm->sv_y = (double*)malloc(nbr_sv * sizeof(double));
