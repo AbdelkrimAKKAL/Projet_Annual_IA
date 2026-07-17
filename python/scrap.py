@@ -187,6 +187,7 @@ CATEGORIES = {
 }
 
 
+# verifier si l'image est valide et n'est corrumpu
 def is_valid_image(content: bytes) -> bool:
     try:
         img = Image.open(io.BytesIO(content))
@@ -195,7 +196,7 @@ def is_valid_image(content: bytes) -> bool:
     except Exception:
         return False
 
-
+# verifier si l'image n'est pas AI ou 3D
 def is_realistic(result: dict, exclude_keywords: list) -> bool:
     text_to_check = " ".join([
         result.get("title", ""),
@@ -205,6 +206,7 @@ def is_realistic(result: dict, exclude_keywords: list) -> bool:
     ]).lower()
 
     for word in exclude_keywords:
+        # verifier le regex (faut qu'il soit un mot seule '\bart\b')
         if re.search(r"\b" + re.escape(word) + r"\b", text_to_check):
             return False
     return True
@@ -225,6 +227,7 @@ def download_images(keywords, exclude_keywords, prefix, max_images, save_dir):
         keyword = keywords[keyword_index]
         keyword_index += 1
 
+        # recuperes les metadonnées (dict: {titles, images, url, source})
         with DDGS() as ddgs:
             try:
                 results = list(ddgs.images(
