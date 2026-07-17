@@ -1,8 +1,9 @@
 import ctypes
 from ctypes import c_double, c_int, c_void_p, c_char_p, POINTER
 import os
+import numpy as np
 
-from functions import convertir_tab_c, melanger
+from functions import melanger
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 lib = ctypes.CDLL(os.path.join(SCRIPT_DIR, "..", "C", "model_linear.dll"))
@@ -42,9 +43,10 @@ def entrainer_linear(X, Y, output_size, epochs, lr, shuffle=True, seed=42, X_tes
     hist_train, hist_test = [], []
     err_train, err_test = [] , []
 
+    X_c = [np.ctypeslib.as_ctypes(np.array(x, dtype=np.float64)) for x in X]
     for _ in range(epochs):
-        for x, y in zip(X, Y):
-            lib.train_one_linear(model, convertir_tab_c(x), y, lr)
+        for x_c, y in zip(X_c, Y):
+            lib.train_one_linear(model, x_c, y, lr)
         if suivre_historique:
             hist_train.append(precision_linear(model, X, Y))
             hist_test.append(precision_linear(model, X_test, Y_test))
@@ -56,7 +58,8 @@ def entrainer_linear(X, Y, output_size, epochs, lr, shuffle=True, seed=42, X_tes
 
 def predire_linear(model, point):
     """Classe predite par le modele pour un point"""
-    return lib.predict_linear(model, convertir_tab_c(point))
+    point_np = np.array(point, dtype=np.float64)
+    return lib.predict_linear(model, np.ctypeslib.as_ctypes(point_np))
 
 
 def precision_linear(model, X, Y):
@@ -72,12 +75,14 @@ def entrainer_linear_regression(X, Y, epochs, lr, shuffle=True, seed=42):
 
     input_size = len(X[0])
     model = lib.create_linear_model(input_size, 1)
+    X_c = [np.ctypeslib.as_ctypes(np.array(x, dtype=np.float64)) for x in X]
     for _ in range(epochs):
-        for x, y in zip(X, Y):
-            lib.train_one_linear_regression(model, convertir_tab_c(x), y, lr)
+        for x_c, y in zip(X_c, Y):
+            lib.train_one_linear_regression(model, x_c, y, lr)
     return model
 
 
 def predire_linear_regression(model, point):
     """Valeur reelle predite par le modele pour un point"""
-    return lib.predict_linear_regression(model, convertir_tab_c(point))
+    point_np = np.array(point, dtype=np.float64)
+    return lib.predict_linear_regression(model, np.ctypeslib.as_ctypes(point_np))
