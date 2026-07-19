@@ -1,3 +1,5 @@
+""" Auteur: Abdelkrim AKKAL """
+
 import sys
 from ddgs import DDGS
 import requests

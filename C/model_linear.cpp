@@ -1,3 +1,5 @@
+// Auteur: Abdelkrim AKKAL
+
 #include <stdlib.h>
 #include <stdio.h>
 

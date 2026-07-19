@@ -1,3 +1,5 @@
+""" Auteur: Abdelkrim AKKAL """
+
 import ctypes
 from ctypes import c_double, c_int, c_void_p, c_char_p, POINTER
 import os

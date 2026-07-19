@@ -1,3 +1,5 @@
+// Auteur: Abdelkrim AKKAL
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -117,7 +119,7 @@ EXPORT void kmeans_fit(RBFModel* m, double* X, int nb_ex, int nb_iter) {
         }
     }
 
-    free(mat);      // free uniquement les pointeurs
+    free(mat);      
     free(groupe);
 }
 
